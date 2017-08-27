@@ -6,7 +6,7 @@ import static org.junit.jupiter.api.Assertions.*;
 
 public class TestExtractor {
     private static final String PAYLOAD = "REFN b7cf4966-c91f-464c-a346-0b97b3aee92a";
-    final String MASK = "__GEDCOM__";
+    private static final String MASK = "__GEDCOM__";
 
     private static String[] extract(final String from, final String mask) {
         return new NotaryExtractor(mask).extract(from);
