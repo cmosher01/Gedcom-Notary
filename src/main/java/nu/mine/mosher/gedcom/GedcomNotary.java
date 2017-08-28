@@ -14,6 +14,7 @@ import static nu.mine.mosher.logging.Jul.log;
 public class GedcomNotary implements Gedcom.Processor {
     private final GedcomNotaryOptions options;
     private final NotaryExtractor extractor;
+    private GedcomTree tree;
 
     public static void main(final String... args) throws InvalidLevel, IOException {
         log();
@@ -30,6 +31,7 @@ public class GedcomNotary implements Gedcom.Processor {
 
     @Override
     public boolean process(final GedcomTree tree) {
+        this.tree = tree;
         select(tree.getRoot(), 0);
         return true;
     }
@@ -41,7 +43,7 @@ public class GedcomNotary implements Gedcom.Processor {
             final GedcomLine ln = cnode.getObject();
             if (ln.getTagString().toLowerCase().equals(this.options.ref.get(level))) {
                 if (this.options.ref.at(level)) {
-                    log().finer("----------------------------------------- matched: " + ln);
+                    log().finer("matched: " + ln);
                     where(cnode, c);
                 } else {
                     log().finest("checking within: " + ln);
@@ -54,38 +56,50 @@ public class GedcomNotary implements Gedcom.Processor {
 
     private void where(final TreeNode<GedcomLine> node, final ListIterator<TreeNode<GedcomLine>> c) {
         if (this.options.insertIn != null) {
-            if (this.options.delete) {
-                c.remove();
-            }
-            final TreeNode<GedcomLine> parNode = node.parent();
-            final GedcomLine parLine = parNode.getObject();
-            switch(this.options.insertIn) {
-                case PARENT:
-                    parNode.setObject(parLine.replaceValue(wrap(node)+parLine.getValue()));
-                break;
-                case SIBLING:
-                    c.add(new TreeNode<>(GedcomLine.create(parLine.getLevel()+1,GedcomTag.NOTE,wrap(node))));
-                break;
-                default:
-                    throw new IllegalStateException();
-            }
-        } else if (this.options.extractTo != null) {
-            GedcomLine noteLine = node.getObject();
-            String[] tag_rest = this.extractor.extract(noteLine.getValue());
-            while (!tag_rest[0].isEmpty()) {
-                if (this.options.extractTo.equals(GedcomNotaryOptions.Target.CHILD)) {
-                    node.addChild(unwrap(tag_rest[0], noteLine.getLevel()+1));
-                } else if (this.options.extractTo.equals(GedcomNotaryOptions.Target.SIBLING)) {
-                    c.add(unwrap(tag_rest[0], noteLine.getLevel()));
-                } else {
-                    throw new IllegalStateException();
-                }
-                noteLine = noteLine.replaceValue(tag_rest[1]);
-                node.setObject(noteLine);
-                tag_rest = this.extractor.extract(noteLine.getValue());
-            }
+            insert(node, c);
         } else {
-            throw new IllegalStateException();
+            extract(node, c);
+        }
+    }
+
+    private void extract(final TreeNode<GedcomLine> node, final ListIterator<TreeNode<GedcomLine>> c) {
+        if (node.getObject().isPointer()) {
+            extractFrom(node, this.tree.getNode(node.getObject().getPointer()), c);
+        } else {
+            extractFrom(node, node, c);
+        }
+    }
+
+    private void extractFrom(final TreeNode<GedcomLine> nodeAnchor, final TreeNode<GedcomLine> nodeValue, final ListIterator<TreeNode<GedcomLine>> c) {
+        final int level = nodeAnchor.getObject().getLevel();
+        String[] tag_rest = this.extractor.extract(nodeValue.getObject().getValue());
+        while (!tag_rest[0].isEmpty()) {
+            if (this.options.extractTo.equals(GedcomNotaryOptions.Target.CHILD)) {
+                nodeAnchor.addChild(unwrap(tag_rest[0], level + 1));
+            } else {
+                c.add(unwrap(tag_rest[0], level));
+            }
+            nodeValue.setObject(nodeValue.getObject().replaceValue(tag_rest[1]));
+            tag_rest = this.extractor.extract(nodeValue.getObject().getValue());
+        }
+    }
+
+    private void insert(final TreeNode<GedcomLine> node, final ListIterator<TreeNode<GedcomLine>> c) {
+        if (this.options.delete) {
+            // TODO log warning if line has children
+            c.remove();
+        }
+        final TreeNode<GedcomLine> parNode = node.parent();
+        final GedcomLine parLine = parNode.getObject();
+        switch(this.options.insertIn) {
+            case PARENT:
+                parNode.setObject(parLine.replaceValue(wrap(node)+parLine.getValue()));
+            break;
+            case SIBLING:
+                c.add(new TreeNode<>(parLine.createChild(GedcomTag.NOTE,wrap(node))));
+            break;
+            default:
+                throw new IllegalStateException();
         }
     }
 
