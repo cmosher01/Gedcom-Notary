@@ -9,7 +9,8 @@ public class NotaryExtractor {
     public NotaryExtractor(final String mask) {
         final String q = Pattern.quote(mask);
         final String p = q + ": (.*?) " + q;
-        this.extractor = Pattern.compile("(.*?)" + p + "(.*)", Pattern.DOTALL);
+        final String r = "(.*?)" + p + "(.*)";
+        this.extractor = Pattern.compile(r, Pattern.DOTALL);
     }
 
     public String[] extract(final String from) {

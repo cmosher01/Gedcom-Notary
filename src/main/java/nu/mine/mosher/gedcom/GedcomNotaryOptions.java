@@ -4,7 +4,7 @@ package nu.mine.mosher.gedcom;
 public class GedcomNotaryOptions extends GedcomOptions {
     public GedcomDataRef ref;
     public String mask = "__GEDCOM__";
-    public enum Target { PARENT, SIBLING, CHILD };
+    public enum Target { PARENT, SIBLING, CHILD }
     public Target insertIn;
     public Target extractTo;
     public boolean delete;
@@ -14,11 +14,12 @@ public class GedcomNotaryOptions extends GedcomOptions {
         System.err.println("Usage: java -jar gedcom-notary-all.jar [OPTIONS] <in.ged >out.ged");
         System.err.println("Hides/extracts GEDCOM tags in NOTEs.");
         System.err.println("Options:");
-        System.err.println("-w, --where                   tag path to hide");
-        System.err.println("-m, --mask                    mask to flank tag line with in NOTE");
+        System.err.println("-w, --where=EXPR              tag path to hide");
+        System.err.println("-m, --mask=MASK               mask to flank tag line with in NOTE");
         System.err.println("-i, --insert={parent|sibling} add to parent value or as sibling");
         System.err.println("-x, --extract={child|sibling} extract and add as child or sibling");
         System.err.println("-d, --delete                  if inserting, delete the original tag line");
+        System.err.println("                              if extracting, replace any existing tag line");
         options();
     }
 
@@ -83,8 +84,8 @@ public class GedcomNotaryOptions extends GedcomOptions {
         if (this.insertIn != null && this.extractTo != null) {
             throw new IllegalArgumentException("Can only specify one of -i or -x.");
         }
-        if (this.extractTo != null) {
-            this.delete = false;
+        if (this.concToWidth == null) {
+            throw new IllegalArgumentException("The -c option is required.");
         }
         return this;
     }
