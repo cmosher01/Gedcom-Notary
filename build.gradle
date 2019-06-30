@@ -21,8 +21,3 @@ dependencies {
 test {
     useJUnitPlatform()
 }
-
-task sourcesJar(type: Jar) {
-    from sourceSets.main.allJava
-    archiveClassifier = 'sources'
-}
