@@ -1,5 +1,11 @@
 package nu.mine.mosher.gedcom;
 
+import nu.mine.mosher.logging.Jul;
+
+import java.util.logging.Level;
+
+import static nu.mine.mosher.logging.Jul.log;
+
 @SuppressWarnings({"access", "WeakerAccess", "unused"})
 public class GedcomNotaryOptions extends GedcomOptions {
     public GedcomDataRef ref;
@@ -8,6 +14,7 @@ public class GedcomNotaryOptions extends GedcomOptions {
     public Target insertIn;
     public Target extractTo;
     public boolean delete;
+    public boolean dryrun;
 
     public void help() {
         this.help = true;
@@ -15,12 +22,23 @@ public class GedcomNotaryOptions extends GedcomOptions {
         System.err.println("Hides/extracts GEDCOM tags in NOTEs.");
         System.err.println("Options:");
         System.err.println("-w, --where=EXPR              tag path to hide");
-        System.err.println("-m, --mask=MASK               mask to flank tag line with in NOTE");
+        System.err.println("-m, --mask=MASK               mask to flank tag line with in NOTE, default "+this.mask);
         System.err.println("-i, --insert={parent|sibling} add to parent value or as sibling");
         System.err.println("-x, --extract={child|sibling} extract and add as child or sibling");
         System.err.println("-d, --delete                  if inserting, delete the original tag line");
         System.err.println("                              if extracting, replace any existing tag line");
+        System.err.println("-n, --dryrun                  don't generate output file, just a report");
         options();
+    }
+
+    public void n() {
+        dryrun();
+    }
+
+    public void dryrun() {
+        this.dryrun = true;
+        Jul.setLevel(Level.INFO);
+        log().info("logging at INFO level");
     }
 
     public void m(final String mask) {

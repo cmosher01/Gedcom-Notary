@@ -12,6 +12,8 @@ import static nu.mine.mosher.logging.Jul.log;
 // Created by Christopher Alan Mosher on 2017-08-25
 
 public class GedcomNotary implements Gedcom.Processor {
+    private static final int LEN_MAX = 40;
+
     private final GedcomNotaryOptions options;
     private final NotaryExtractor extractor;
     private GedcomTree tree;
@@ -35,7 +37,7 @@ public class GedcomNotary implements Gedcom.Processor {
         this.tree = tree;
         select(tree.getRoot(), 0);
         deleteFlaggedNodes();
-        return true;
+        return !this.options.dryrun;
     }
 
     private void select(final TreeNode<GedcomLine> node, final int level) {
@@ -98,6 +100,7 @@ public class GedcomNotary implements Gedcom.Processor {
         String[] tag_rest = this.extractor.extract(nodeValue.getObject().getValue());
         while (!tag_rest[0].isEmpty()) {
             log().fine("found: " + tag_rest[0]);
+            logTopLevelRecordFor(nodeAnchor, tag_rest[0]);
             final TreeNode<GedcomLine> unwrapped;
             if (this.options.extractTo.equals(GedcomNotaryOptions.Target.CHILD)) {
                 unwrapped = unwrap(tag_rest[0], level + 1);
@@ -111,6 +114,25 @@ public class GedcomNotary implements Gedcom.Processor {
             tag_rest = this.extractor.extract(nodeValue.getObject().getValue());
         }
         return added;
+    }
+
+    private void logTopLevelRecordFor(final TreeNode<GedcomLine> node, final String value) {
+        final TreeNode<GedcomLine> top = findContainingRecord(node);
+        log().info(getRecordLabel(top)+": "+formatValue(value));
+    }
+
+    private static String getRecordLabel(final TreeNode<GedcomLine> topRecord) {
+        for (final TreeNode<GedcomLine> c : topRecord) {
+            final GedcomLine line = c.getObject();
+            if (line.getTag().equals(GedcomTag.NAME) || line.getTag().equals(GedcomTag.TITL)) {
+                return line.getValue();
+            }
+        }
+        return topRecord.getObject().getID();
+    }
+
+    private String formatValue(String value) {
+        return value.length() <= LEN_MAX ? value : value.substring(0, LEN_MAX)+"...";
     }
 
     private void insert(final TreeNode<GedcomLine> node, final ListIterator<TreeNode<GedcomLine>> c) {
@@ -153,5 +175,12 @@ public class GedcomNotary implements Gedcom.Processor {
     private void deleteFlaggedNodes() {
         // TODO log at info level?
         this.deletes.forEach(TreeNode::removeFromParent);
+    }
+
+    private static TreeNode<GedcomLine> findContainingRecord(final TreeNode<GedcomLine> n) {
+        if (n.parent().parent() == null) {
+            return n;
+        }
+        return findContainingRecord(n.parent());
     }
 }
